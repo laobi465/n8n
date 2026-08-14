@@ -60,7 +60,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $json.output || '{}';\nlet parsed = {};\nlet s = String(raw).trim();\nconst m = s.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\nif (m) s = m[1].trim();\nconst start = s.indexOf('{');\nconst end = s.lastIndexOf('}');\nif (start !== -1 && end !== -1) s = s.slice(start, end + 1);\ntry {\n  parsed = JSON.parse(s);\n} catch (e) {\n  throw new Error('AI输出无法解析为JSON: ' + e.message + ' | 原文: ' + raw);\n}\nlet title = String(parsed.title || '').trim();\nlet slug = String(parsed.slug || '').trim();\nif (!slug && title) {\n  slug = title.toLowerCase().replace(/[^\\w\\u4e00-\\u9fa5]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);\n}\nreturn [{ json: {\n  title: title,\n  slug: slug,\n  excerpt: String(parsed.excerpt || '').trim(),\n  content: String(parsed.content || '').trim(),\n  category: String(parsed.category || 'Uncategorized').trim(),\n  tags: Array.isArray(parsed.tags) ? parsed.tags.map(t => String(t).trim()).filter(Boolean) : []\n} }];"
+        "jsCode": "const raw = $json.output || '{}';\nlet parsed = {};\nlet s = String(raw).trim();\nconst m = s.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\nif (m) s = m[1].trim();\nconst start = s.indexOf('{');\nconst end = s.lastIndexOf('}');\nif (start !== -1 && end !== -1) s = s.slice(start, end + 1);\ntry {\n  parsed = JSON.parse(s);\n} catch (e) {\n  throw new Error('AI output is not valid JSON: ' + e.message + ' | raw: ' + raw);\n}\nlet title = String(parsed.title || '').trim();\nlet slug = String(parsed.slug || '').trim();\nif (!slug && title) {\n  slug = title.toLowerCase().replace(/[^\\w\\u4e00-\\u9fa5]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);\n}\nreturn [{ json: {\n  title: title,\n  slug: slug,\n  excerpt: String(parsed.excerpt || '').trim(),\n  content: String(parsed.content || '').trim(),\n  category: String(parsed.category || 'Uncategorized').trim(),\n  tags: Array.isArray(parsed.tags) ? parsed.tags.map(t => String(t).trim()).filter(Boolean) : []\n} }];"
       },
       "id": "node-parse",
       "name": "Code - 解析AI输出",
@@ -157,7 +157,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst art = $('Code - 准备术语').first().json;\nconst termId = response.id ?? response.term_id ?? response.data?.term_id ?? response.error?.data?.term_id ?? response.error?.response?.data?.term_id;\nconst categoryId = Number(termId);\nif (!Number.isInteger(categoryId) || categoryId <= 0) throw new Error('无法创建或取得分类 term_id: ' + JSON.stringify(response));\nreturn [{ json: { ...art, categoryId } }];"
+        "jsCode": "const response = $input.first().json;\nconst art = $('Code - 准备术语').first().json;\nconst termId = response.id ?? response.term_id ?? response.data?.term_id ?? response.error?.data?.term_id ?? response.error?.response?.data?.term_id;\nconst categoryId = Number(termId);\nif (!Number.isInteger(categoryId) || categoryId <= 0) throw new Error('Failed to create or get category term_id: ' + JSON.stringify(response));\nreturn [{ json: { ...art, categoryId } }];"
       },
       "id": "node-category-resolve",
       "name": "Code - 取得分类ID",
@@ -202,7 +202,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const art = $('Code - 取得分类ID').first().json;\nconst finalTagIds = [...new Set($input.all().map(item => {\n  const response = item.json;\n  return Number(response.id ?? response.term_id ?? response.data?.term_id ?? response.error?.data?.term_id ?? response.error?.response?.data?.term_id);\n}).filter(id => Number.isInteger(id) && id > 0))];\nif (finalTagIds.length !== art.tagNames.length) throw new Error('无法创建或取得全部标签 term_id');\nreturn [{ json: { ...art, finalTagIds } }];"
+        "jsCode": "const art = $('Code - 取得分类ID').first().json;\nconst finalTagIds = [...new Set($input.all().map(item => {\n  const response = item.json;\n  return Number(response.id ?? response.term_id ?? response.data?.term_id ?? response.error?.data?.term_id ?? response.error?.response?.data?.term_id);\n}).filter(id => Number.isInteger(id) && id > 0))];\nif (finalTagIds.length !== art.tagNames.length) throw new Error('Failed to create or get all tag term_ids');\nreturn [{ json: { ...art, finalTagIds } }];"
       },
       "id": "node-tags-resolve",
       "name": "Code - 重组标签ID",
