@@ -1,0 +1,302 @@
+{
+  "name": "技术内容自动发布WordPress",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "node-schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const themes = [\n  { category: '开源程序教程', instruction: '选择一款知名开源程序/项目，写一篇实用教程：如何安装、配置、使用，以及应用场景与技巧。' },\n  { category: '主机测评', instruction: '写一篇主机/虚拟主机/VPS测评或选购指南。注意：不要编造具体价格、性能跑分、配置数字或厂商承诺，若涉及具体参数请注明\"以官方文档/官网为准\"，重点写选购标准、适用场景、注意事项等真实客观内容。' },\n  { category: '服务器运维', instruction: '写一篇服务器运维实战教程，主题如 Linux 常用命令、日常巡检、安全加固、备份恢复、日志分析等。' },\n  { category: 'WordPress优化', instruction: '写一篇 WordPress 优化教程，如性能优化、缓存配置、SEO优化、安全加固、插件推荐等。' },\n  { category: '在线工具教程', instruction: '写一篇在线工具的使用教程，选择一个实用的在线工具，介绍其功能、使用方法、优缺点与注意事项。' },\n  { category: 'Python/PHP入门', instruction: '写一篇 Python 或 PHP 入门教程，主题如环境搭建、基础语法、常用库/框架、小实战项目等。' }\n];\nconst pick = themes[Math.floor(Math.random() * themes.length)];\nreturn [{ json: { category: pick.category, instruction: pick.instruction } }];"
+      },
+      "id": "node-topic",
+      "name": "Code - 选题",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [224, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.instruction }}",
+        "options": {
+          "systemMessage": "你是一位资深的中文技术自媒体编辑与SEO/GEO优化专家，面向一个技术类网站写作。请根据用户提供的主题，选择其中一个具体、可写的子题，撰写一篇原创、专业、有深度的技术文章。\n【内容真实性要求】\n- 内容必须客观、真实、可验证，只写你有把握的事实；\n- 严禁编造具体版本号、价格、性能跑分、配置数字、API 细节或厂商承诺；\n- 若涉及具体参数或过时信息，请注明\"以官方文档/官网为准\"；\n- 主机测评类尤其不得虚构任何评测数据，重点写选购标准、适用场景、注意事项等可验证的通用结论。\n【写作要求】\n- 标题新颖有吸引力；正文结构清晰（含 h2 小标题、段落、列表）；\n- 自然融入核心关键词，利于搜索引擎和 AI 搜索（Perplexity、ChatGPT Search 等）收录。\n【输出格式】\n- 请为该文章拟定一个合适的中文分类名（category）和 3-5 个中文标签（tags）；\n- 只输出一个合法的 JSON 对象，不要输出任何其他文字、注释或 markdown 代码块，格式严格如下：\n{\"title\":\"标题\",\"slug\":\"url别名\",\"excerpt\":\"约120字摘要\",\"content\":\"HTML格式正文\",\"category\":\"分类名\",\"tags\":[\"标签1\",\"标签2\",\"标签3\"]}"
+        }
+      },
+      "id": "node-agent",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [448, 0]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "node-model",
+      "name": "DeepSeek Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [544, -224],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "SgrYhV32MeVZERum",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.output || '{}';\nlet parsed = {};\nlet s = String(raw).trim();\nconst m = s.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\nif (m) s = m[1].trim();\nconst start = s.indexOf('{');\nconst end = s.lastIndexOf('}');\nif (start !== -1 && end !== -1) s = s.slice(start, end + 1);\ntry {\n  parsed = JSON.parse(s);\n} catch (e) {\n  throw new Error('AI输出无法解析为JSON: ' + e.message + ' | 原文: ' + raw);\n}\nlet title = String(parsed.title || '').trim();\nlet slug = String(parsed.slug || '').trim();\nif (!slug && title) {\n  slug = title.toLowerCase().replace(/[^\\w\\u4e00-\\u9fa5]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);\n}\nreturn [{ json: {\n  title: title,\n  slug: slug,\n  excerpt: String(parsed.excerpt || '').trim(),\n  content: String(parsed.content || '').trim(),\n  category: String(parsed.category || '未分类').trim(),\n  tags: Array.isArray(parsed.tags) ? parsed.tags.map(t => String(t).trim()).filter(Boolean) : []\n} }];"
+      },
+      "id": "node-parse",
+      "name": "Code - 解析AI输出",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [672, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://word.apexck.com/wp-json/wp/v2/posts?per_page=100&_fields=slug&status=publish",
+        "options": {}
+      },
+      "alwaysOutputData": true,
+      "id": "node-dedup-http",
+      "name": "HTTP Request - 查重",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [848, 208]
+    },
+    {
+      "parameters": {
+        "jsCode": "const posts = $input.all();\nconst art = $('Code - 解析AI输出').all()[0].json;\nconst targetSlug = String(art.slug || '').trim();\nconst isDuplicate = Boolean(targetSlug) && posts.some(item => String(item.json?.slug || '').trim() === targetSlug);\nreturn [{ json: { ...art, isDuplicate } }];"
+      },
+      "id": "node-dedup-code",
+      "name": "Code - 判断重复",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 208]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-dup",
+              "leftValue": "={{ $json.isDuplicate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if",
+      "name": "IF - 是否重复",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1232, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const art = $('Code - 判断重复').first().json;\nconst defaults = ['技术教程', '实用技巧', '网站运维'];\nconst tagNames = [...new Set((Array.isArray(art.tags) ? art.tags : []).map(tag => String(tag).trim()).filter(Boolean))];\nfor (const tag of defaults) {\n  if (tagNames.length >= 3) break;\n  if (!tagNames.includes(tag)) tagNames.push(tag);\n}\nreturn [{ json: { ...art, category: String(art.category || '未分类').trim(), tagNames } }];"
+      },
+      "id": "node-term-prepare",
+      "name": "Code - 准备术语",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://word.apexck.com/wp-json/wp/v2/categories",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.category }) }}",
+        "responseFormat": "json",
+        "options": {}
+      },
+      "id": "node-cat-create",
+      "name": "HTTP - 创建分类",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1840, 120],
+      "credentials": {
+        "wordpressApi": {
+          "id": "qsJwYYosAjqF2zc9",
+          "name": "Wordpress account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst art = $('Code - 准备术语').first().json;\nconst termId = response.id ?? response.term_id ?? response.data?.term_id ?? response.error?.data?.term_id ?? response.error?.response?.data?.term_id;\nconst categoryId = Number(termId);\nif (!Number.isInteger(categoryId) || categoryId <= 0) throw new Error('无法创建或取得分类 term_id: ' + JSON.stringify(response));\nreturn [{ json: { ...art, categoryId } }];"
+      },
+      "id": "node-category-resolve",
+      "name": "Code - 取得分类ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2080, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $json;\nconst names = Array.isArray(item.tagNames) ? item.tagNames : [];\nreturn names.map(tagName => ({ json: { ...item, tagName } }));"
+      },
+      "id": "node-tag-expand",
+      "name": "Code - 展开标签",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2320, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://word.apexck.com/wp-json/wp/v2/tags",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.tagName }) }}",
+        "responseFormat": "json",
+        "options": {}
+      },
+      "id": "node-tag-create",
+      "name": "HTTP - 创建标签",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2560, 120],
+      "credentials": {
+        "wordpressApi": {
+          "id": "qsJwYYosAjqF2zc9",
+          "name": "Wordpress account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const art = $('Code - 取得分类ID').first().json;\nconst finalTagIds = [...new Set($input.all().map(item => {\n  const response = item.json;\n  return Number(response.id ?? response.term_id ?? response.data?.term_id ?? response.error?.data?.term_id ?? response.error?.response?.data?.term_id);\n}).filter(id => Number.isInteger(id) && id > 0))];\nif (finalTagIds.length !== art.tagNames.length) throw new Error('无法创建或取得全部标签 term_id');\nreturn [{ json: { ...art, finalTagIds } }];"
+      },
+      "id": "node-tags-resolve",
+      "name": "Code - 重组标签ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2800, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $json;\nreturn [{ json: {\n  title: item.title,\n  content: item.content,\n  slug: item.slug,\n  excerpt: item.excerpt,\n  status: 'publish',\n  comment_status: 'open',\n  categories: item.categoryId ? [Number(item.categoryId)] : [1],\n  tags: Array.isArray(item.finalTagIds) ? item.finalTagIds.map(Number) : []\n} }];"
+      },
+      "id": "node-build",
+      "name": "Code - 组装发布参数",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4000, 280]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://word.apexck.com/wp-json/wp/v2/posts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "responseFormat": "json",
+        "options": {}
+      },
+      "id": "node-wp",
+      "name": "HTTP - 创建文章",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4240, 280],
+      "credentials": {
+        "wordpressApi": {
+          "id": "qsJwYYosAjqF2zc9",
+          "name": "Wordpress account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{"node": "Code - 选题", "type": "main", "index": 0}]]
+    },
+    "Code - 选题": {
+      "main": [[{"node": "AI Agent", "type": "main", "index": 0}]]
+    },
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [[{"node": "AI Agent", "type": "ai_languageModel", "index": 0}]]
+    },
+    "AI Agent": {
+      "main": [[{"node": "Code - 解析AI输出", "type": "main", "index": 0}]]
+    },
+    "Code - 解析AI输出": {
+      "main": [[{"node": "HTTP Request - 查重", "type": "main", "index": 0}]]
+    },
+    "HTTP Request - 查重": {
+      "main": [[{"node": "Code - 判断重复", "type": "main", "index": 0}]]
+    },
+    "Code - 判断重复": {
+      "main": [[{"node": "IF - 是否重复", "type": "main", "index": 0}]]
+    },
+    "IF - 是否重复": {
+      "main": [[], [{"node": "Code - 准备术语", "type": "main", "index": 0}]]
+    },
+    "Code - 准备术语": {
+      "main": [[{"node": "HTTP - 创建分类", "type": "main", "index": 0}]]
+    },
+    "HTTP - 创建分类": {
+      "main": [[{"node": "Code - 取得分类ID", "type": "main", "index": 0}]]
+    },
+    "Code - 取得分类ID": {
+      "main": [[{"node": "Code - 展开标签", "type": "main", "index": 0}]]
+    },
+    "Code - 展开标签": {
+      "main": [[{"node": "HTTP - 创建标签", "type": "main", "index": 0}]]
+    },
+    "HTTP - 创建标签": {
+      "main": [[{"node": "Code - 重组标签ID", "type": "main", "index": 0}]]
+    },
+    "Code - 重组标签ID": {
+      "main": [[{"node": "Code - 组装发布参数", "type": "main", "index": 0}]]
+    },
+    "Code - 组装发布参数": {
+      "main": [[{"node": "HTTP - 创建文章", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "pinData": {},
+  "meta": null,
+  "nodeGroups": []
+}
