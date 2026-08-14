@@ -55,7 +55,23 @@ Schedule Trigger (每6小时)
 | 文件 | 说明 |
 | --- | --- |
 | [`workflows/tech-content-wordpress-publish.json`](./workflows/tech-content-wordpress-publish.json) | 可导入的工作流文件 |
-| [`docs/AI_HANDOVER.md`](./docs/AI_HANDOVER.md) | AI 智能体交接文档 |
+
+---
+
+## 文档位置
+
+本仓库在 `docs/` 目录下提供一套完整文档：
+
+| 文档 | 路径 | 说明 |
+| --- | --- | --- |
+| 项目文档 | [`docs/PROJECT.md`](./docs/PROJECT.md) | 项目介绍、价值、特性、技术栈 |
+| PRD 文档 | [`docs/PRD.md`](./docs/PRD.md) | 产品需求、功能需求、验收标准 |
+| 技术方案文档 | [`docs/TECHNICAL.md`](./docs/TECHNICAL.md) | 架构、节点设计、数据流、边界处理 |
+| 项目开发文档 | [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md) | 开发环境、流程、规范、常见坑 |
+| AI 智能体交接文档 | [`docs/AI_HANDOVER.md`](./docs/AI_HANDOVER.md) | 交接给 AI 智能体/后续维护者 |
+| 运维文档 | [`docs/OPS.md`](./docs/OPS.md) | 部署、监控、备份、故障排查 |
+| 更新文档 | [`docs/UPDATE.md`](./docs/UPDATE.md) | 更新流程、版本历史、变更指引 |
+| 环境文档 | [`docs/ENVIRONMENT.md`](./docs/ENVIRONMENT.md) | 开发/生产环境介绍 + 教程 |
 
 ---
 
